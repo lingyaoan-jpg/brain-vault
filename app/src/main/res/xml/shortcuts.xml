@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="quick_record"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_quick_record_short"
+        android:shortcutLongLabel="@string/shortcut_quick_record_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="app.brain"
+            android:targetClass="app.brain.MainActivity">
+            <extra android:name="quick_record" android:value="1" />
+        </intent>
+    </shortcut>
+</shortcuts>

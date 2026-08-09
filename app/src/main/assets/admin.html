@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>脑内收容所 · 管理端</title>
+<style>
+  body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #f5f3fa; color: #333; }
+  header { background: #7c6fa8; color: #fff; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  main { max-width: 900px; margin: 16px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card h2 { font-size: 15px; margin: 0 0 10px; }
+  textarea, input, select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+  textarea { min-height: 120px; }
+  button { padding: 8px 14px; border: none; border-radius: 6px; background: #7c6fa8; color: #fff; font-size: 14px; cursor: pointer; margin-right: 6px; }
+  button.secondary { background: #e8e4f2; color: #4a3f74; }
+  button.danger { background: #d9695f; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .rec { border-bottom: 1px solid #eee; padding: 8px 0; }
+  .rec .meta { font-size: 12px; color: #888; }
+  .tags span { display: inline-block; background: #efeaf8; color: #5a4d85; border-radius: 10px; padding: 1px 8px; margin-right: 4px; font-size: 12px; }
+  #login { max-width: 360px; margin: 80px auto; }
+  #app { display: none; }
+  .msg { padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 13px; }
+  .msg.ok { background: #e5f5e8; color: #2e7d4f; }
+  .msg.err { background: #fdeaea; color: #b3372e; }
+  label.sel { font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="login" class="card">
+  <h2>脑内收容所 · 管理端登录</h2>
+  <input type="password" id="password" placeholder="管理端密码">
+  <button onclick="doLogin()">登录</button>
+  <div id="loginMsg"></div>
+</div>
+
+<div id="app">
+  <header>
+    <h1>脑内收容所 · 管理端</h1>
+    <div class="row">
+      <span id="statusText"></span>
+      <button class="secondary" onclick="logout()">退出登录</button>
+    </div>
+  </header>
+  <main>
+    <div id="msg"></div>
+
+    <div class="card">
+      <h2>搜索与查看</h2>
+      <div class="row">
+        <input id="q" placeholder="搜索原文 / 标题 / 分类" style="flex:1">
+        <button onclick="loadRecords()">搜索</button>
+        <button class="secondary" onclick="loadRecords()">刷新</button>
+      </div>
+      <div id="recordCount" style="font-size:12px;color:#888;margin:6px 0"></div>
+      <div id="records"></div>
+    </div>
+
+    <div class="card">
+      <h2>批量粘贴导入</h2>
+      <textarea id="importText" placeholder="把备忘录粘贴到这里，每条记录用空行分隔。原文不会被改写，导入后 AI 自动整理。"></textarea>
+      <div class="row">
+        <button onclick="doImport()">导入</button>
+        <span id="importResult" style="font-size:13px;color:#2e7d4f"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>批量修改（勾选上方记录）</h2>
+      <div class="row">
+        <input id="batchTitle" placeholder="新标题" style="flex:1">
+        <button onclick="batchModify({title: el('batchTitle').value})">修改标题</button>
+      </div>
+      <div class="row">
+        <input id="batchDate" placeholder="首次时间 yyyy-MM-dd HH:mm" style="flex:1">
+        <button onclick="batchTime()">修改时间</button>
+      </div>
+      <div class="row">
+        <select id="batchDim" style="flex:0 0 140px">
+          <option value="type">内容类型</option>
+          <option value="topic">人生课题</option>
+          <option value="urgency">紧急程度</option>
+          <option value="importance">重要程度</option>
+          <option value="emotion">情绪</option>
+        </select>
+        <input id="batchValue" placeholder="新分类名" style="flex:1">
+        <button onclick="batchModify({dimension: el('batchDim').value, value: el('batchValue').value})">修改分类</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button onclick="exportTxt()">导出勾选为 txt</button>
+        <button class="secondary" onclick="exportTxtAll()">导出全部为 txt</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>备份与恢复</h2>
+      <div class="row">
+        <button onclick="createBackup()">创建完整备份</button>
+        <span id="backupResult" style="font-size:13px;color:#2e7d4f"></span>
+      </div>
+      <div id="backups" style="margin-top:8px"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+function el(id){ return document.getElementById(id); }
+let token = localStorage.getItem('admin_token') || '';
+let allRecords = [];
+
+function showMsg(text, ok){
+  const m = el('msg');
+  m.className = 'msg ' + (ok ? 'ok' : 'err');
+  m.textContent = text;
+  setTimeout(()=>{ m.textContent=''; }, 4000);
+}
+
+async function api(path, options = {}){
+  const headers = options.headers || {};
+  headers['Authorization'] = 'Bearer ' + token;
+  if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  const resp = await fetch(path, Object.assign({}, options, { headers }));
+  if (resp.status === 403){ showMsg('登录已过期，请重新登录', false); el('login').style.display='block'; el('app').style.display='none'; token=''; localStorage.removeItem('admin_token'); throw new Error('unauthorized'); }
+  return resp;
+}
+
+async function doLogin(){
+  const resp = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password: el('password').value }) });
+  const data = await resp.json();
+  if (data.token){ token = data.token; localStorage.setItem('admin_token', token); el('login').style.display='none'; el('app').style.display='block'; loadStatus(); loadRecords(); }
+  else { el('loginMsg').textContent = data.error || '登录失败'; }
+}
+
+function logout(){
+  api('/api/logout?token=' + token).catch(()=>{});
+  token=''; localStorage.removeItem('admin_token');
+  el('app').style.display='none'; el('login').style.display='block';
+}
+
+async function loadStatus(){
+  const resp = await api('/api/status');
+  const data = await resp.json();
+  el('statusText').textContent = `记录 ${data.recordCount} 条 · 本机备份 ${data.backupCount} 份 · 端口 ${data.port}`;
+  loadBackups();
+}
+
+async function loadRecords(){
+  const q = el('q').value.trim();
+  const resp = await api('/api/records' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  const data = await resp.json();
+  allRecords = data.records || [];
+  el('recordCount').textContent = `共 ${allRecords.length} 条`;
+  renderRecords();
+}
+
+function renderRecords(){
+  const box = el('records');
+  box.innerHTML = '';
+  allRecords.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'rec';
+    const tags = (r.categories||[]).map(c => `<span>${esc(c.name)}</span>`).join('');
+    const title = r.title ? `<b>${esc(r.title)}</b>` : '';
+    d.innerHTML = `
+      <label class="sel"><input type="checkbox" data-id="${r.id}"> ${title} ${tags}</label>
+      <div class="meta">${new Date(r.createdAt).toLocaleString('zh-CN')}${r.isPinned?' · 置顶':''}${r.isFavorite?' · 收藏':''}</div>
+      <div>${esc(r.content.slice(0, 200))}</div>`;
+    box.appendChild(d);
+  });
+}
+
+function selectedIds(){
+  return Array.from(document.querySelectorAll('#records input[type=checkbox]:checked')).map(i => i.dataset.id);
+}
+
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function doImport(){
+  const resp = await api('/api/import', { method:'POST', body: JSON.stringify({ text: el('importText').value }) });
+  const data = await resp.json();
+  el('importResult').textContent = data.error ? data.error : `已导入 ${data.imported} 条`;
+  if (data.imported > 0){ el('importText').value=''; loadRecords(); loadStatus(); }
+}
+
+async function batchModify(payload){
+  const ids = selectedIds();
+  if (!ids.length){ showMsg('请先勾选记录', false); return; }
+  const resp = await api('/api/batch', { method:'POST', body: JSON.stringify(Object.assign({ ids }, payload)) });
+  const data = await resp.json();
+  showMsg(data.error || `已更新 ${data.updated} 条`, !data.error);
+  if (!data.error) loadRecords();
+}
+
+function batchTime(){
+  const v = el('batchDate').value.trim();
+  if (!v){ showMsg('请填写时间', false); return; }
+  const t = new Date(v.replace(' ', 'T'));
+  if (isNaN(t.getTime())){ showMsg('时间格式不对，示例：2026-08-01 09:30', false); return; }
+  batchModify({ createdAt: t.getTime() });
+}
+
+async function exportTxt(){
+  const ids = selectedIds();
+  if (!ids.length){ showMsg('请先勾选记录', false); return; }
+  downloadTxt('/api/export?ids=' + ids.join(','));
+}
+
+function exportTxtAll(){ downloadTxt('/api/export'); }
+
+function downloadTxt(url){
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '脑内收容所导出.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function createBackup(){
+  const resp = await api('/api/backup/create', { method:'POST', body: '{}' });
+  const data = await resp.json();
+  el('backupResult').textContent = data.error || `已创建：${data.fileName}`;
+  loadBackups();
+}
+
+async function loadBackups(){
+  const resp = await api('/api/backups');
+  const data = await resp.json();
+  const box = el('backups');
+  box.innerHTML = '';
+  if (data.error){ box.textContent = data.error; return; }
+  const list = data.backups || [];
+  if (!list.length){ box.innerHTML = '<div class="meta">还没有本机备份，先点击「创建完整备份」。</div>'; return; }
+  list.forEach(b => {
+    const row = document.createElement('div');
+    row.className = 'rec';
+    const size = (b.sizeBytes/1024).toFixed(0) + ' KB';
+    row.innerHTML = `
+      <div>${esc(b.fileName)} <span class="meta">${size}</span></div>
+      <div class="row" style="margin-top:4px">
+        <button class="secondary" onclick="downloadBackup('${b.fileName}')">下载</button>
+        <button class="danger" onclick="restoreBackup('${b.fileName}')">恢复到手机</button>
+      </div>`;
+    box.appendChild(row);
+  });
+}
+
+function downloadBackup(name){
+  const a = document.createElement('a');
+  a.href = '/api/backup/download?file=' + encodeURIComponent(name);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function restoreBackup(name){
+  if (!confirm('将用该备份覆盖手机当前数据（恢复前会自动备份当前数据）。确定继续？')) return;
+  const resp = await api('/api/backup/restore', { method:'POST', body: JSON.stringify({ fileName: name }) });
+  const data = await resp.json();
+  showMsg(data.ok ? '恢复完成，请在手机上重启应用' : (data.error || '恢复失败'), !!data.ok);
+}
+
+async function init(){
+  if (token){ el('login').style.display='none'; el('app').style.display='block'; loadStatus(); loadRecords(); }
+}
+init();
+</script>
+</body>
+</html>

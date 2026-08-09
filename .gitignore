@@ -1,0 +1,17 @@
+﻿*.iml
+.gradle/
+.idea/
+local.properties
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+schemas/
+.DS_Store
+# 本机环境/临时文件
+.kotlin/
+*.log
+sqlite-tools/
+vision-mcp/
+*.apk

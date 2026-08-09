@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">脑内收容所</string>
+    <string name="shortcut_quick_record_short">快速记录</string>
+    <string name="shortcut_quick_record_long">快速新建一条记录</string>
+</resources>
