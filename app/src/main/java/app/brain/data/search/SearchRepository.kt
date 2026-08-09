@@ -42,6 +42,30 @@ class SearchRepository @Inject constructor(
         }
     }
 
+    /** 重命名分类后刷新 FTS 里的分类名缓存，保证搜索用新名能命中。 */
+    suspend fun refreshCategoryNames() = withContext(Dispatchers.IO) {
+        val path = context.getDatabasePath(BrainDatabase.DB_NAME).absolutePath
+        val connection = BundledSQLiteDriver().open(path)
+        try {
+            val statement = connection.prepare(
+                """
+                UPDATE records_fts SET category_names = (
+                    SELECT group_concat(c.name, ' ') FROM record_categories rc
+                    JOIN categories c ON c.id = rc.category_id
+                    WHERE rc.record_id = records_fts.record_id
+                )
+                """.trimIndent()
+            )
+            try {
+                (statement as BundledSQLiteStatement).step()
+            } finally {
+                statement.close()
+            }
+        } finally {
+            connection.close()
+        }
+    }
+
     companion object {
         fun escapeFts(input: String): String = "\"" + input.replace("\"", "\"\"") + "\""
     }

@@ -1,13 +1,13 @@
-﻿package app.brain.ui.archive
+package app.brain.ui.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.brain.data.db.dao.CategoryDao
 import app.brain.data.db.dao.RecordCategoryDao
 import app.brain.data.db.dao.RecordDao
+import app.brain.data.db.entity.CategoryEntity
 import app.brain.data.search.SearchRepository
-import app.brain.ui.common.DimensionOrder
 import app.brain.ui.common.RecordListItem
-import app.brain.ui.common.dimensionLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -15,41 +15,44 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** 收容所页上的一个一级分类卡片（人生课题/情绪/重要程度/内容类型/紧急程度）。 */
-data class DimensionCardItem(
-    val dimension: String,
+/** 收容所页上的一个内容类型卡片（每种类型一张卡）。 */
+data class TypeCardItem(
+    val categoryId: String,
     val name: String,
     val count: Int,
 )
 
-/** 收容所页：全部记录 + 按一级分类分组的方块卡片；搜索时展示搜索结果。 */
+/** 收容所页：全部卡片 + 按内容类型分组的方块卡片；搜索时展示搜索结果。 */
 @HiltViewModel
 class ArchiveViewModel @Inject constructor(
     private val recordDao: RecordDao,
     private val recordCategoryDao: RecordCategoryDao,
+    private val categoryDao: CategoryDao,
     private val searchRepository: SearchRepository,
 ) : ViewModel() {
 
     val totalCount: StateFlow<Int> = recordDao.observeActiveCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-/** 一级分类卡片：固定 5 个维度，各显示该维度下的记录数。 */
-    val dimensionCards: StateFlow<List<DimensionCardItem>> =
-        recordCategoryDao.observeAllWithCategoriesActive()
-            .map { links ->
-                val byRecord = links.groupBy { it.recordId }
-                DimensionOrder.FILTER_ORDER.map { dim ->
-                    val count = byRecord.values.count { cats -> cats.any { it.dimension == dim } }
-                    DimensionCardItem(dim, dimensionLabel(dim), count)
-                }
+/** 内容类型卡片：每种类型一张卡，显示该类型下的记录数。 */
+    val typeCards: StateFlow<List<TypeCardItem>> =
+        combine(
+            categoryDao.observeByDimension(CategoryEntity.DIM_TYPE),
+            recordCategoryDao.observeAllWithCategoriesActive(),
+        ) { types, links ->
+            val byRecord = links.groupBy { it.recordId }
+            types.map { type ->
+                val count = byRecord.values.count { cats -> cats.any { it.categoryId == type.id } }
+                TypeCardItem(type.id, type.name, count)
             }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()

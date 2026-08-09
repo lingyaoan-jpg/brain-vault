@@ -5,7 +5,7 @@ import app.brain.data.db.entity.CategoryEntity
 object SeedCategories {
     data class Seed(val dimension: String, val name: String, val sortOrder: Int)
 
-    private val types = listOf("灵感/念头", "观点", "感受/情绪", "事件记录", "分析/反思", "文章/散文", "待处理事项", "碎碎念/吐槽")
+    private val types = listOf("灵感想法", "分析观点", "感受", "事件记录", "文章", "待处理事项", "碎碎念")
     private val topics = listOf("亲密关系", "自我认知", "自我成长", "原生家庭")
     private val urgencies = listOf("立即", "近期", "稍后", "无时限")
     private val importances = listOf("核心", "重要", "一般", "随想")

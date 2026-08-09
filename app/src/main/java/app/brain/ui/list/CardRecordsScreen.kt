@@ -1,4 +1,4 @@
-﻿package app.brain.ui.list
+package app.brain.ui.list
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -25,18 +25,22 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,9 +48,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -54,15 +58,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.brain.data.db.entity.CategoryEntity
 import app.brain.ui.components.RecordCard
 import app.brain.ui.components.dimensionBaseColor
 
-/** 收容所卡片对应的记录列表：全部记录或单个一级分类，右上角可筛选该分类下的二级分类。 */
+/** 收容所卡片对应的记录列表：全部卡片或单个内容类型卡片，右上角可重命名卡片并筛选辅助维度。 */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CardRecordsScreen(
-    dimension: String,
+    cardKey: String,
     onBack: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onOpenEditor: () -> Unit,
@@ -72,8 +75,18 @@ fun CardRecordsScreen(
     val items by viewModel.items.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val filterOptions by viewModel.filterOptions.collectAsStateWithLifecycle()
-    val isAll = dimension == "all"
-    val showTypeTag = isAll || dimension != CategoryEntity.DIM_TYPE
+    val renameMessage by viewModel.renameMessage.collectAsStateWithLifecycle()
+    val renameDone by viewModel.renameDone.collectAsStateWithLifecycle()
+    val isAll = cardKey == "all"
+    val showTypeTag = isAll
+    var showRenameDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showRenameDialog) {
+        if (showRenameDialog) viewModel.resetRenameState()
+    }
+    LaunchedEffect(renameDone) {
+        if (renameDone) showRenameDialog = false
+    }
 
     Scaffold(
         topBar = {
@@ -85,10 +98,19 @@ fun CardRecordsScreen(
                     }
                 },
                 actions = {
+                    if (!isAll) {
+                        IconButton(onClick = { showRenameDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = "重命名卡片",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                     CardFilterButton(
                         filter = filter,
                         options = filterOptions,
-                        isAll = isAll,
                         onSelect = viewModel::selectFilter,
                         onClear = viewModel::clearFilter,
                     )
@@ -126,13 +148,21 @@ fun CardRecordsScreen(
             }
         }
     }
+
+    if (showRenameDialog) {
+        RenameCardDialog(
+            currentName = cardName,
+            errorMessage = renameMessage,
+            onConfirm = viewModel::renameCard,
+            onDismiss = { showRenameDialog = false },
+        )
+    }
 }
 
 @Composable
 private fun CardFilterButton(
     filter: CardFilter?,
     options: CardFilterOptions,
-    isAll: Boolean,
     onSelect: (String, String?) -> Unit,
     onClear: () -> Unit,
 ) {
@@ -207,21 +237,19 @@ private fun CardFilterButton(
                                 )
                             }
                             options.dimensions.forEach { dim ->
-                                if (isAll) {
-                                    FilterDimensionHeader(
-                                        dim = dim,
-                                        expanded = expandedDimension == dim.dimension,
-                                        selected = filter?.dimension == dim.dimension && filter?.categoryId == null,
-                                        onSelectDimension = {
-                                            onSelect(dim.dimension, null)
-                                            open = false
-                                        },
-                                        onToggleExpand = {
-                                            expandedDimension = if (expandedDimension == dim.dimension) null else dim.dimension
-                                        },
-                                    )
-                                }
-                                if (expandedDimension == dim.dimension || !isAll) {
+                                FilterDimensionHeader(
+                                    dim = dim,
+                                    expanded = expandedDimension == dim.dimension,
+                                    selected = filter?.dimension == dim.dimension && filter?.categoryId == null,
+                                    onSelectDimension = {
+                                        onSelect(dim.dimension, null)
+                                        open = false
+                                    },
+                                    onToggleExpand = {
+                                        expandedDimension = if (expandedDimension == dim.dimension) null else dim.dimension
+                                    },
+                                )
+                                if (expandedDimension == dim.dimension) {
                                     dim.categories.forEach { cat ->
                                         FilterCategoryRow(
                                             cat = cat,
@@ -241,6 +269,45 @@ private fun CardFilterButton(
             }
         }
     }
+}
+
+@Composable
+private fun RenameCardDialog(
+    currentName: String,
+    errorMessage: String?,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf(currentName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("重命名卡片") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    label = { Text("卡片名称") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
 }
 
 @Composable

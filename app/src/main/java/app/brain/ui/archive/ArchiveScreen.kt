@@ -47,9 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.brain.ui.components.RecordCard
-import app.brain.ui.components.dimensionBaseColor
 
-/** 收容所页：顶部搜索框 + 方块卡片（全部记录 + 5 个一级分类），搜索时切换为搜索结果列表。 */
+/** 收容所页：顶部搜索框 + 方块卡片（全部卡片 + 各内容类型），搜索时切换为搜索结果列表。 */
 @Composable
 fun ArchiveScreen(
     onOpenMenu: () -> Unit,
@@ -59,7 +58,7 @@ fun ArchiveScreen(
     viewModel: ArchiveViewModel = hiltViewModel(),
 ) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val dimensionCards by viewModel.dimensionCards.collectAsStateWithLifecycle()
+    val typeCards by viewModel.typeCards.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val searching = searchQuery.isNotBlank()
@@ -113,17 +112,16 @@ fun ArchiveScreen(
             ) {
                 item(key = "all") {
                     CardBox(
-                        name = "全部记录",
+                        name = "全部卡片",
                         sub = "共 $totalCount 条",
                         onClick = { onOpenCard("all") },
                     )
                 }
-                gridItems(dimensionCards, key = { it.dimension }) { card ->
+                gridItems(typeCards, key = { it.categoryId }) { card ->
                     CardBox(
                         name = card.name,
                         sub = "${card.count} 条",
-                        color = dimensionBaseColor(card.dimension),
-                        onClick = { onOpenCard(card.dimension) },
+                        onClick = { onOpenCard(card.categoryId) },
                     )
                 }
                 if (totalCount == 0) {
