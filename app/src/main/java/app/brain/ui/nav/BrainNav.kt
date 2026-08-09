@@ -18,6 +18,7 @@ import app.brain.ui.record.RecordEditorScreen
 import app.brain.ui.settings.SettingsScreen
 import app.brain.ui.suggestions.SuggestionScreen
 import app.brain.ui.trash.TrashScreen
+import app.brain.data.db.entity.CategoryEntity
 
 object Routes {
     const val TABS = "tabs"
@@ -32,12 +33,15 @@ object Routes {
     const val IMPORT = "import"
     const val ANALYSIS = "analysis"
     const val ANALYSIS_CHAT = "analysis/{sessionId}"
-    const val CARD = "card/{categoryId}"
+    const val CARD = "card/{dimension}?categoryId={categoryId}"
 
     fun detail(id: String) = "detail/$id"
     fun edit(id: String) = "editor/$id"
     fun analysisChat(id: String) = "analysis/$id"
-    fun card(id: String) = "card/$id"
+    fun card(dimension: String) = "card/$dimension"
+
+    /** 跳到某个一级分类卡片，并预选一个二级分类（AI 分类完成后跳对应内容类型用）。 */
+    fun cardWithCategory(dimension: String, categoryId: String) = "card/$dimension?categoryId=$categoryId"
 }
 
 @Composable
@@ -69,7 +73,11 @@ fun BrainNav(quickRecord: Boolean = false) {
                 onBack = { navController.popBackStack() },
                 onNewRecordOrganized = { categoryId ->
                     navController.popBackStack()
-                    navController.navigate(Routes.card(categoryId ?: "all"))
+                    if (categoryId != null) {
+                        navController.navigate(Routes.cardWithCategory(CategoryEntity.DIM_TYPE, categoryId))
+                    } else {
+                        navController.navigate(Routes.card("all"))
+                    }
                 },
             )
         }
@@ -109,11 +117,14 @@ fun BrainNav(quickRecord: Boolean = false) {
         }
         composable(
             route = Routes.CARD,
-            arguments = listOf(navArgument("categoryId") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("dimension") { type = NavType.StringType },
+                navArgument("categoryId") { type = NavType.StringType; defaultValue = "" },
+            ),
         ) { entry ->
-            val id = entry.arguments?.getString("categoryId").orEmpty()
+            val dim = entry.arguments?.getString("dimension").orEmpty()
             CardRecordsScreen(
-                categoryId = id,
+                dimension = dim,
                 onBack = { navController.popBackStack() },
                 onOpenDetail = { recordId -> navController.navigate(Routes.detail(recordId)) },
                 onOpenEditor = { navController.navigate(Routes.EDITOR) },

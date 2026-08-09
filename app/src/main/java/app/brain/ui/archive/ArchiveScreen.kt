@@ -7,9 +7,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -34,19 +35,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.brain.ui.components.RecordCard
+import app.brain.ui.components.dimensionBaseColor
 
-/** 收容所页：顶部搜索框 + 方块卡片（全部记录 + 内容类型），搜索时切换为搜索结果列表。 */
+/** 收容所页：顶部搜索框 + 方块卡片（全部记录 + 5 个一级分类），搜索时切换为搜索结果列表。 */
 @Composable
 fun ArchiveScreen(
     onOpenMenu: () -> Unit,
@@ -56,7 +59,7 @@ fun ArchiveScreen(
     viewModel: ArchiveViewModel = hiltViewModel(),
 ) {
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val typeCards by viewModel.typeCards.collectAsStateWithLifecycle()
+    val dimensionCards by viewModel.dimensionCards.collectAsStateWithLifecycle()
     val totalCount by viewModel.totalCount.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val searching = searchQuery.isNotBlank()
@@ -115,14 +118,15 @@ fun ArchiveScreen(
                         onClick = { onOpenCard("all") },
                     )
                 }
-                gridItems(typeCards, key = { it.categoryId }) { card ->
+                gridItems(dimensionCards, key = { it.dimension }) { card ->
                     CardBox(
                         name = card.name,
                         sub = "${card.count} 条",
-                        onClick = { onOpenCard(card.categoryId) },
+                        color = dimensionBaseColor(card.dimension),
+                        onClick = { onOpenCard(card.dimension) },
                     )
                 }
-                if (typeCards.isEmpty()) {
+                if (totalCount == 0) {
                     item(key = "empty_hint") {
                         Text(
                             text = "还没有记录。去「收容」页写下第一条吧。",
@@ -138,7 +142,7 @@ fun ArchiveScreen(
 }
 
 @Composable
-private fun CardBox(name: String, sub: String, onClick: () -> Unit) {
+private fun CardBox(name: String, sub: String, onClick: () -> Unit, color: Color? = null) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
@@ -153,13 +157,31 @@ private fun CardBox(name: String, sub: String, onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(12.dp),
         ) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (color != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(color),
+                    )
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = sub,
