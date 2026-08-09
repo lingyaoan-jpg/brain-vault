@@ -61,7 +61,7 @@ fun RecordEditorScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(if (viewModel.isEdit) "编辑记录" else "新建记录") },
+                    title = { Text(if (viewModel.isEdit) "编辑记录" else "新建收容") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -97,7 +97,7 @@ fun RecordEditorScreen(
                     decorationBox = { innerTextField ->
                         if (title.isEmpty()) {
                             Text(
-                                text = "给这条记录起个标题（可选）",
+                                text = "给这条收容起个名字",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -122,7 +122,7 @@ fun RecordEditorScreen(
                     decorationBox = { innerTextField ->
                         if (content.isEmpty()) {
                             Text(
-                                text = "记录此刻的想法\n\n不需要选择分类，AI 会在后台自动整理。\n断网也能保存。",
+                                text = "开始收容此刻",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
