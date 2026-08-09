@@ -32,12 +32,12 @@ fun ContainHomeScreen(onOpenEditor: () -> Unit, modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .height(46.dp),
+                .height(36.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "脑内收容所",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
         }
