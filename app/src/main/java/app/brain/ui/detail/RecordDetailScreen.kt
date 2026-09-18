@@ -10,10 +10,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -206,6 +204,16 @@ fun RecordDetailScreen(
             }
 
             item {
+                // 整条记录 = 一张卡片（跟收容所列表里那张同款），点进来只是把它展开了
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                 // 一行：标签在左，置顶、日期、收藏（黄色星标）在最右，紧凑排列
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
@@ -294,16 +302,14 @@ fun RecordDetailScreen(
                         }
                     }
                 }
-            }
-
-            item {
                 // 正文直接展示，无“原文”标题、无分隔线
                 SelectionContainer {
                     Text(
                         text = item.content,
                         style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(vertical = 4.dp),
                     )
+                }
+                }
                 }
             }
 
@@ -339,31 +345,19 @@ fun RecordDetailScreen(
                 }
             }
 
-            if (comments.isNotEmpty()) {
-                item {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
-                    }
-                }
-
-                itemsIndexed(comments, key = { _, comment -> comment.id }) { index, comment ->
+            // 每条补充想法也是自己的一张卡片，左边缩进一点，挂在正文下面
+            itemsIndexed(comments, key = { _, comment -> comment.id }) { _, comment ->
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp),
+                ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        if (index > 0) {
-                            HorizontalDivider(
-                                thickness = 0.5.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                            )
-                        }
                         Text(
                             text = comment.content,
                             style = MaterialTheme.typography.bodyMedium,

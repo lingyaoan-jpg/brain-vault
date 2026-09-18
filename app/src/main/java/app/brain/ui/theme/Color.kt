@@ -16,6 +16,9 @@ val SeedOnSurface = Color(0xFF211D28)
 val SeedOnSurfaceVariant = Color(0xFF6F6879)
 val SeedOutline = Color(0xFFE7E1EF)
 
+// outline 拿来画「次要图标和次要文字」，得看得清；分隔线用上面的 SeedOutline。
+val SeedOutlineStrong = Color(0xFF8E879B)
+
 // 卡片底色：比页面白再深一档的浅紫，用来把「一张卡片 / 一条记录」从白底上分出来。
 // 不能太淡，太淡在白底上就看不出边界了。
 val SeedCardSurface = Color(0xFFF4F1FA)
