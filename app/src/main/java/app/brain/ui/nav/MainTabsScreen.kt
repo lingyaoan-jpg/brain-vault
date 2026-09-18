@@ -49,6 +49,7 @@ fun MainTabsScreen(
     onOpenSuggestions: () -> Unit,
     onOpenImport: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAppearance: () -> Unit,
     onOpenAnalysis: () -> Unit,
     onOpenCard: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
@@ -141,6 +142,15 @@ fun MainTabsScreen(
                     onClick = {
                         scope.launch { drawerState.close() }
                         onOpenSettings()
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                NavigationDrawerItem(
+                    label = { Text("外观") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onOpenAppearance()
                     },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )

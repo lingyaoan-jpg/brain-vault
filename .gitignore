@@ -15,3 +15,5 @@ schemas/
 sqlite-tools/
 vision-mcp/
 *.apk
+# 本机排查用的临时脚本与截图
+.scratch/

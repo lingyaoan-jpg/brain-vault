@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.brain.ui.analysis.AnalysisChatScreen
 import app.brain.ui.analysis.AnalysisScreen
+import app.brain.ui.appearance.AppearanceScreen
 import app.brain.ui.detail.RecordDetailScreen
 import app.brain.ui.imports.ImportScreen
 import app.brain.ui.list.CardRecordsScreen
@@ -28,6 +29,7 @@ object Routes {
     const val DETAIL = "detail/{recordId}"
     const val TRASH = "trash"
     const val SETTINGS = "settings"
+    const val APPEARANCE = "appearance"
     const val SUGGESTIONS = "suggestions"
     const val IMPORT = "import"
     const val ANALYSIS = "analysis"
@@ -61,6 +63,7 @@ fun BrainNav(quickRecord: Boolean = false) {
                 onOpenSuggestions = { navController.navigate(Routes.SUGGESTIONS) },
                 onOpenImport = { navController.navigate(Routes.IMPORT) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                onOpenAppearance = { navController.navigate(Routes.APPEARANCE) },
                 onOpenAnalysis = { navController.navigate(Routes.ANALYSIS) },
                 onOpenCard = { id -> navController.navigate(Routes.card(id)) },
                 onOpenDetail = { id -> navController.navigate(Routes.detail(id)) },
@@ -130,6 +133,9 @@ fun BrainNav(quickRecord: Boolean = false) {
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Routes.APPEARANCE) {
+            AppearanceScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.SUGGESTIONS) {
             SuggestionScreen(onBack = { navController.popBackStack() })

@@ -60,6 +60,9 @@ class RecordEditorViewModel @Inject constructor(
     val isEdit: Boolean = recordId != null
 
     private var draftCreatedAt: Long = System.currentTimeMillis()
+    private var initialTitle: String = ""
+    private var initialContent: String = ""
+    private var draftDisabled: Boolean = false
 
     init {
         viewModelScope.launch {
@@ -75,6 +78,8 @@ class RecordEditorViewModel @Inject constructor(
                     _content.value = draft.content
                 }
             }
+            initialTitle = _title.value
+            initialContent = _content.value
 
             // 标题或正文变化时，500ms 防抖自动保存草稿（仅新建模式）
             launch {
@@ -83,7 +88,7 @@ class RecordEditorViewModel @Inject constructor(
                     .debounce(500)
                     .distinctUntilChanged()
                     .collect { (t, c) ->
-                        if (recordId != null) return@collect
+                        if (recordId != null || draftDisabled) return@collect
                         if (c.isBlank() && t.isBlank()) {
                             draftDao.delete(DRAFT_ID)
                         } else {
@@ -108,6 +113,21 @@ class RecordEditorViewModel @Inject constructor(
 
     fun onTitleChange(text: String) {
         _title.value = text
+    }
+
+    /** 有未保存的内容（新建：写了东西；编辑：和刚打开时不一样），退出前要问一句。 */
+    fun hasUnsavedContent(): Boolean {
+        if (_content.value.isBlank()) return false
+        if (recordId == null) return true
+        return _title.value.trim() != initialTitle.trim() ||
+            _content.value.trim() != initialContent.trim()
+    }
+
+    /** 用户选择「不保存」时，把自动草稿也一起清掉。 */
+    fun discardDraft() {
+        if (recordId != null) return
+        draftDisabled = true
+        viewModelScope.launch { draftDao.delete(DRAFT_ID) }
     }
 
     fun save() {

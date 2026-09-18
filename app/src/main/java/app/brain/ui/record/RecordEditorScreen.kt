@@ -1,15 +1,20 @@
 package app.brain.ui.record
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -24,6 +29,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -45,12 +53,19 @@ fun RecordEditorScreen(
     val organizing by viewModel.organizing.collectAsStateWithLifecycle()
     val organizedCategoryId by viewModel.organizedCategoryId.collectAsStateWithLifecycle()
 
-// 编辑已有记录：保存后直接返回。
+    var showExitDialog by remember { mutableStateOf(false) }
+    val requestExit: () -> Unit = {
+        if (viewModel.hasUnsavedContent()) showExitDialog = true else onBack()
+    }
+
+    BackHandler { requestExit() }
+
+    // 编辑已有记录：保存后直接返回。
     LaunchedEffect(saved) {
         if (saved && viewModel.isEdit) onBack()
     }
 
-// 新记录：等 AI 分类完成后跳转对应卡片；超时/失败时 categoryId 为 null，去「全部记录」。
+    // 新记录：等 AI 分类完成后跳转对应卡片；超时/失败时 categoryId 为 null，去「全部记录」。
     LaunchedEffect(saved, organizing, organizedCategoryId) {
         if (saved && !viewModel.isEdit && !organizing) {
             onNewRecordOrganized(organizedCategoryId)
@@ -63,7 +78,7 @@ fun RecordEditorScreen(
                 TopAppBar(
                     title = { Text(if (viewModel.isEdit) "编辑记录" else "新建收容") },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = requestExit) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                         }
                     },
@@ -82,6 +97,7 @@ fun RecordEditorScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
+                    .imePadding()
                     .padding(horizontal = 16.dp),
             ) {
                 BasicTextField(
@@ -113,8 +129,9 @@ fun RecordEditorScreen(
                     value = content,
                     onValueChange = viewModel::onContentChange,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 12.dp),
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(top = 12.dp, bottom = 12.dp),
                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface,
                     ),
@@ -140,7 +157,7 @@ fun RecordEditorScreen(
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                    verticalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     CircularProgressIndicator()
@@ -151,6 +168,45 @@ fun RecordEditorScreen(
                     )
                 }
             }
+        }
+
+        if (showExitDialog) {
+            AlertDialog(
+                onDismissRequest = { showExitDialog = false },
+                title = { Text(if (viewModel.isEdit) "还没保存" else "还没收容") },
+                text = {
+                    Text(
+                        if (viewModel.isEdit) "这次的修改还没保存，要保存吗？"
+                        else "这条内容还没保存，要现在收容吗？"
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showExitDialog = false
+                            viewModel.save()
+                        },
+                    ) {
+                        Text("保存")
+                    }
+                },
+                dismissButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = { showExitDialog = false }) {
+                            Text("取消")
+                        }
+                        TextButton(
+                            onClick = {
+                                showExitDialog = false
+                                viewModel.discardDraft()
+                                onBack()
+                            },
+                        ) {
+                            Text("不保存")
+                        }
+                    }
+                },
+            )
         }
     }
 }

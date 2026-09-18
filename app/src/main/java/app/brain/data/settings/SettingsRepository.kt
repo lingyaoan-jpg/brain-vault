@@ -30,10 +30,23 @@ class SettingsRepository @Inject constructor(
     val hasApiKey: Boolean
         get() = apiKey.isNotBlank()
 
+    /** 当前模型名。旧的 deepseek-chat / deepseek-reasoner 会被映射到新名字，不写坏已有配置。 */
     var model: String
-        get() = prefs.getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL
+        get() {
+            val stored = prefs.getString(KEY_MODEL, null)
+            if (stored.isNullOrBlank()) return DEFAULT_MODEL
+            return LEGACY_MODEL_ALIASES[stored] ?: stored
+        }
         set(value) {
             prefs.edit().putString(KEY_MODEL, value.trim().ifEmpty { DEFAULT_MODEL }).apply()
+        }
+
+    /** 外观模式：跟随系统 / 日间 / 夜间。 */
+    var themeMode: String
+        get() = prefs.getString(KEY_THEME_MODE, null) ?: THEME_SYSTEM
+        set(value) {
+            val clean = if (value in THEME_MODES) value else THEME_SYSTEM
+            prefs.edit().putString(KEY_THEME_MODE, clean).apply()
         }
 
     /** 电脑管理端登录密码（Keystore 加密存储）。 */
@@ -53,6 +66,10 @@ class SettingsRepository @Inject constructor(
     fun saveApiKey(key: String) {
         val clean = key.trim()
         prefs.edit().putString(KEY_API_KEY, clean.ifEmpty { null }?.let { encrypt(it) }).apply()
+    }
+
+    fun clearApiKey() {
+        prefs.edit().remove(KEY_API_KEY).apply()
     }
 
     private fun getOrCreateKey(): SecretKey {
@@ -101,10 +118,23 @@ class SettingsRepository @Inject constructor(
         private const val KEY_MODEL = "ai_model"
         private const val KEY_ADMIN_PASSWORD = "admin_password_enc"
         private const val KEY_ADMIN_PORT = "admin_port"
+        private const val KEY_THEME_MODE = "theme_mode"
         private const val KEYSTORE_ALIAS = "brain_deepseek_key"
         private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
-        const val DEFAULT_MODEL = "deepseek-chat"
+
+        const val THEME_SYSTEM = "system"
+        const val THEME_LIGHT = "light"
+        const val THEME_DARK = "dark"
+        val THEME_MODES = listOf(THEME_SYSTEM, THEME_LIGHT, THEME_DARK)
+
+        const val DEFAULT_MODEL = "deepseek-v4-flash"
+        /** 设置页下拉里可选的两个官方模型。 */
+        val MODEL_OPTIONS = listOf("deepseek-v4-flash", "deepseek-v4-pro")
+        private val LEGACY_MODEL_ALIASES = mapOf(
+            "deepseek-chat" to "deepseek-v4-flash",
+            "deepseek-reasoner" to "deepseek-v4-flash",
+        )
         const val DEFAULT_ADMIN_PORT = 8080
     }
 }

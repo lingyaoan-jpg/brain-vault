@@ -30,6 +30,10 @@ class SettingsViewModel @Inject constructor(
     val model = MutableStateFlow(settings.model)
     val hasApiKey = MutableStateFlow(settings.hasApiKey)
 
+    /** 已保存的管理端配置，用来把设置页输入框预填好，避免关掉之后再也开不起来。 */
+    val savedAdminPort: Int = settings.adminPort
+    val savedAdminPassword: String = settings.adminPassword
+
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
@@ -59,11 +63,22 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun save(key: String, modelName: String) {
-        settings.saveApiKey(key)
+        // 留空表示「不改密钥」，不再把已存的密钥顶掉。
+        if (key.isNotBlank()) settings.saveApiKey(key)
         settings.model = modelName
         hasApiKey.value = settings.hasApiKey
         aiQueueProcessor.kick()
-        _message.value = if (settings.hasApiKey) "已保存" else "已清除密钥"
+        _message.value = when {
+            key.isNotBlank() -> "已保存"
+            settings.hasApiKey -> "已保存，密钥没有改动"
+            else -> "还没填密钥，AI 整理要等填好密钥才会开始"
+        }
+    }
+
+    fun clearApiKey() {
+        settings.clearApiKey()
+        hasApiKey.value = false
+        _message.value = "已清除密钥"
     }
 
     fun testConnection() {
