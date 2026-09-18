@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 /** 收容所页上的一个内容类型卡片（每种类型一张卡）。 */
@@ -63,6 +64,50 @@ class ArchiveViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
+    private val _newCardError = MutableStateFlow<String?>(null)
+    val newCardError: StateFlow<String?> = _newCardError.asStateFlow()
+
+    private val _cardCreated = MutableStateFlow(false)
+    val cardCreated: StateFlow<Boolean> = _cardCreated.asStateFlow()
+
+    fun resetNewCardState() {
+        _newCardError.value = null
+        _cardCreated.value = false
+    }
+
+    /** 用户自己新建一张内容类型卡片；卡片列表会立刻多出来一张。 */
+    fun createCard(rawName: String) {
+        val name = rawName.trim()
+        when {
+            name.isEmpty() -> {
+                _newCardError.value = "卡片名不能为空"
+                return
+            }
+            name.length > 12 -> {
+                _newCardError.value = "名字太长了，12 个字以内就好"
+                return
+            }
+        }
+        viewModelScope.launch {
+            if (categoryDao.getByName(CategoryEntity.DIM_TYPE, name) != null) {
+                _newCardError.value = "已经有一张叫「$name」的卡片了"
+                return@launch
+            }
+            categoryDao.insert(
+                CategoryEntity(
+                    id = "user_type_${UUID.randomUUID().toString().take(8)}",
+                    dimension = CategoryEntity.DIM_TYPE,
+                    name = name,
+                    createdBy = CategoryEntity.CREATED_BY_USER,
+                    // 排在系统内置卡片后面，不去打乱原来的顺序。
+                    sortOrder = USER_CARD_SORT_ORDER,
+                )
+            )
+            _newCardError.value = null
+            _cardCreated.value = true
+        }
+    }
+
     fun onSearchChange(text: String) {
         _searchQuery.value = text
         searchJob?.cancel()
@@ -87,5 +132,9 @@ class ArchiveViewModel @Inject constructor(
                 .sortedByDescending { it.createdAt }
                 .map { RecordListItem(it, byRecord[it.id].orEmpty()) }
         }
+    }
+
+    private companion object {
+        const val USER_CARD_SORT_ORDER = 900
     }
 }

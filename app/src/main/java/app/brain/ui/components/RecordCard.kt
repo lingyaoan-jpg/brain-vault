@@ -1,8 +1,7 @@
 package app.brain.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,8 +31,8 @@ import app.brain.ui.common.statusLabel
 import app.brain.ui.common.formatTime
 
 /**
- * 帖子体记录条目（微博/朋友圈风格）：
- * 彩色圆角标签在题目上方；日期右上角、收藏最右上角；正文为主；细线分隔。
+ * 一条记录 = 一张卡片（浅紫底、圆角、卡片之间留缝）：
+ * 彩色圆角标签在题目上方；日期在右上角、收藏最右上角；正文为主。
  */
 @Composable
 fun RecordCard(
@@ -43,95 +42,92 @@ fun RecordCard(
     showTypeTag: Boolean = true,
     selected: Boolean = false,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)) else Modifier
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        modifier = modifier.fillMaxWidth(),
     ) {
-        // 第一行：内容类型（左）｜置顶｜日期｜收藏（最右上，小号黄星）
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.fillMaxWidth(),
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                if (showTypeTag) {
-                    item.categories.firstOrNull { it.dimension == CategoryEntity.DIM_TYPE }?.let { cat ->
-                        TagChip(text = cat.name, dimension = cat.dimension, categoryId = cat.categoryId)
-                    }
-                }
-            }
-            if (item.record.isPinned) {
-                Icon(
-                    imageVector = Icons.Filled.KeyboardArrowUp,
-                    contentDescription = "已置顶",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 2.dp).size(16.dp),
-                )
-            }
-            Text(
-                text = formatTime(item.record.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            if (item.record.isFavorite) {
-                Icon(
-                    imageVector = Icons.Filled.Star,
-                    contentDescription = "已收藏",
-                    tint = FavoriteYellow,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        }
-
-        item.record.title?.takeIf { it.isNotBlank() }?.let { title ->
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        Text(
-            text = item.record.content,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        if (item.record.status != RecordEntity.STATUS_ORGANIZED) {
+            // 第一行：内容类型（左）｜置顶｜日期｜收藏（最右上，小号黄星）
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .background(statusColor(item.record.status), CircleShape),
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (showTypeTag) {
+                        item.categories.firstOrNull { it.dimension == CategoryEntity.DIM_TYPE }?.let { cat ->
+                            TagChip(text = cat.name, dimension = cat.dimension, categoryId = cat.categoryId)
+                        }
+                    }
+                }
+                if (item.record.isPinned) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowUp,
+                        contentDescription = "已置顶",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(start = 2.dp).size(16.dp),
+                    )
+                }
                 Text(
-                    text = statusLabel(item.record.status),
+                    text = formatTime(item.record.createdAt),
                     style = MaterialTheme.typography.labelSmall,
-                    color = statusColor(item.record.status),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (item.record.isFavorite) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = "已收藏",
+                        tint = FavoriteYellow,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+
+            item.record.title?.takeIf { it.isNotBlank() }?.let { title ->
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-        }
 
-        HorizontalDivider(
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
+            Text(
+                text = item.record.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            if (item.record.status != RecordEntity.STATUS_ORGANIZED) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(statusColor(item.record.status), CircleShape),
+                    )
+                    Text(
+                        text = statusLabel(item.record.status),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor(item.record.status),
+                    )
+                }
+            }
+        }
     }
 }
 
