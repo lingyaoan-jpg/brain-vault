@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -42,6 +44,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,15 +55,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.brain.data.db.entity.CategoryEntity
 import app.brain.data.db.entity.RecordEntity
+import app.brain.data.db.dao.RecordCategoryWithCategory
 import app.brain.data.export.ExportFormat
 import app.brain.ui.common.displayTitle
 import app.brain.ui.common.formatTime
@@ -68,6 +75,11 @@ import app.brain.ui.common.statusLabel
 import app.brain.ui.components.FavoriteYellow
 import app.brain.ui.components.TagChip
 import app.brain.ui.components.dimensionBaseColor
+
+// 详情页下半部分的三个抽屉：分类 / 后续感想 / AI深度分析
+private const val TAB_CATEGORY = 0
+private const val TAB_COMMENT = 1
+private const val TAB_ANALYSIS = 2
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -91,6 +103,8 @@ fun RecordDetailScreen(
     var showCategoryDialog by remember { mutableStateOf(false) }
     var exportFormat by remember { mutableStateOf(ExportFormat.TEXT) }
     var exportMeta by remember { mutableStateOf(true) }
+    // 默认停在「后续感想」：打开一条记录，最想看的往往是后来补了什么
+    var detailTab by rememberSaveable { mutableStateOf(TAB_COMMENT) }
 
     LaunchedEffect(deleted) {
         if (deleted) onBack()
@@ -139,35 +153,37 @@ fun RecordDetailScreen(
             )
         },
         bottomBar = {
-            Surface(color = MaterialTheme.colorScheme.surface) {
-                Column {
-                    HorizontalDivider(
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .imePadding()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                    ) {
-                        OutlinedTextField(
-                            value = commentInput,
-                            onValueChange = viewModel::onCommentChange,
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("写下此刻的补充想法…") },
-                            minLines = 1,
-                            maxLines = 3,
-                            shape = RoundedCornerShape(20.dp),
+            if (detailTab == TAB_COMMENT) {
+                Surface(color = MaterialTheme.colorScheme.surface) {
+                    Column {
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
                         )
-                        TextButton(
-                            onClick = viewModel::addComment,
-                            enabled = commentInput.isNotBlank(),
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding()
+                                .imePadding()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
-                            Text("添加")
+                            OutlinedTextField(
+                                value = commentInput,
+                                onValueChange = viewModel::onCommentChange,
+                                modifier = Modifier.weight(1f),
+                                placeholder = { Text("写下此刻的补充想法…") },
+                                minLines = 1,
+                                maxLines = 3,
+                                shape = RoundedCornerShape(20.dp),
+                            )
+                            TextButton(
+                                onClick = viewModel::addComment,
+                                enabled = commentInput.isNotBlank(),
+                            ) {
+                                Text("添加")
+                            }
                         }
                     }
                 }
@@ -214,40 +230,14 @@ fun RecordDetailScreen(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                // 一行：标签在左，置顶、日期、收藏（黄色星标）在最右，紧凑排列
+                // 右上角一行：置顶、日期、收藏（标签搬去「分类」tab 了）
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        FlowRow(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            categories.filter { it.dimension != CategoryEntity.DIM_TYPE }.forEach { cat ->
-                                TagChip(
-                                    text = cat.name,
-                                    dimension = cat.dimension,
-                                    categoryId = cat.categoryId,
-                                )
-                            }
-                        }
-                        IconButton(
-                            onClick = {
-                                viewModel.startEditCategories()
-                                showCategoryDialog = true
-                            },
-                            modifier = Modifier.size(22.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Edit,
-                                contentDescription = "编辑分类",
-                                tint = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
+                        Spacer(modifier = Modifier.weight(1f))
                         IconButton(
                             onClick = viewModel::togglePinned,
                             modifier = Modifier.size(28.dp),
@@ -313,60 +303,81 @@ fun RecordDetailScreen(
                 }
             }
 
-            if (relatedSessions.isNotEmpty()) {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-                        Text(
-                            text = "相关分析",
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                        relatedSessions.forEach { session ->
+            item {
+                TabRow(selectedTabIndex = detailTab, containerColor = Color.Transparent) {
+                    Tab(
+                        selected = detailTab == TAB_CATEGORY,
+                        onClick = { detailTab = TAB_CATEGORY },
+                        text = { Text("分类") },
+                    )
+                    Tab(
+                        selected = detailTab == TAB_COMMENT,
+                        onClick = { detailTab = TAB_COMMENT },
+                        text = { Text("后续感想") },
+                    )
+                    Tab(
+                        selected = detailTab == TAB_ANALYSIS,
+                        onClick = { detailTab = TAB_ANALYSIS },
+                        text = { Text("AI深度分析") },
+                    )
+                }
+            }
+
+            when (detailTab) {
+                TAB_CATEGORY -> item {
+                    CategoryTabContent(
+                        categories = categories,
+                        onEdit = {
+                            viewModel.startEditCategories()
+                            showCategoryDialog = true
+                        },
+                    )
+                }
+
+                TAB_ANALYSIS -> if (relatedSessions.isEmpty()) {
+                    item { TabEmptyText("还没有分析") }
+                } else {
+                    items(relatedSessions, key = { it.id }) { session ->
+                        Surface(
+                            onClick = { onOpenAnalysis(session.id) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Text(
                                 text = session.title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onOpenAnalysis(session.id) }
-                                    .padding(vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                             )
                         }
                     }
                 }
-            }
 
-            // 每条补充想法也是自己的一张卡片，左边缩进一点，挂在正文下面
-            itemsIndexed(comments, key = { _, comment -> comment.id }) { _, comment ->
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = comment.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Text(
-                            text = formatTime(comment.createdAt),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline,
-                        )
+                else -> if (comments.isEmpty()) {
+                    // 空着就好，下面那个输入框本身就是入口
+                } else {
+                    itemsIndexed(comments, key = { _, comment -> comment.id }) { _, comment ->
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = comment.content,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    text = formatTime(comment.createdAt),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -527,6 +538,76 @@ fun RecordDetailScreen(
     }
 }
 
+
+/**
+ * 「分类」抽屉：只列辅助维度（内容类型在顶部标题旁已经标过了）。
+ * 铅笔放在这里，随时能改；没有辅助分类时也保留铅笔，否则就没入口了。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategoryTabContent(
+    categories: List<RecordCategoryWithCategory>,
+    onEdit: () -> Unit,
+) {
+    val helpers = categories.filter { it.dimension != CategoryEntity.DIM_TYPE }
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "分类",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "编辑分类",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+            if (helpers.isEmpty()) {
+                TabEmptyText("还没有分类")
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    helpers.forEach { cat ->
+                        TagChip(
+                            text = cat.name,
+                            dimension = cat.dimension,
+                            categoryId = cat.categoryId,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** 抽屉里空着的时候只留一句灰字，不摆别的东西。 */
+@Composable
+private fun TabEmptyText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.outline,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 18.dp),
+    )
+}
 
 private fun detailStatusColor(status: String): Color = when (status) {
     RecordEntity.STATUS_PROCESSING -> Color(0xFF7C5BA8)
