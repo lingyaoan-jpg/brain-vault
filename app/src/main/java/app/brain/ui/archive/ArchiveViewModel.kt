@@ -80,7 +80,7 @@ class ArchiveViewModel @Inject constructor(
         val name = rawName.trim()
         when {
             name.isEmpty() -> {
-                _newCardError.value = "卡片名不能为空"
+                _newCardError.value = "收容所名不能为空"
                 return
             }
             name.length > 12 -> {
@@ -90,7 +90,7 @@ class ArchiveViewModel @Inject constructor(
         }
         viewModelScope.launch {
             if (categoryDao.getByName(CategoryEntity.DIM_TYPE, name) != null) {
-                _newCardError.value = "已经有一张叫「$name」的卡片了"
+                _newCardError.value = "已经有一个叫「$name」的收容所了"
                 return@launch
             }
             categoryDao.insert(

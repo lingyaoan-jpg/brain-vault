@@ -102,7 +102,7 @@ fun CardRecordsScreen(
                         IconButton(onClick = { showRenameDialog = true }) {
                             Icon(
                                 imageVector = Icons.Filled.Edit,
-                                contentDescription = "重命名卡片",
+                                contentDescription = "重命名收容所",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp),
                             )
@@ -132,7 +132,7 @@ fun CardRecordsScreen(
                         modifier = Modifier.padding(top = 32.dp),
                     ) {
                         Text(
-                            text = if (isAll) "还没有记录。" else "这个卡片下还没有记录。",
+                            text = if (isAll) "还没有记录。" else "这个收容所里还没有记录。",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -282,14 +282,14 @@ private fun RenameCardDialog(
     var name by remember { mutableStateOf(currentName) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("重命名卡片") },
+        title = { Text("重命名收容所") },
         text = {
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     singleLine = true,
-                    label = { Text("卡片名称") },
+                    label = { Text("收容所名称") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (errorMessage != null) {

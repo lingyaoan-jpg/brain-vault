@@ -70,7 +70,7 @@ class CardRecordsViewModel @Inject constructor(
     private val cardKey: String? =
         savedStateHandle.get<String>("cardKey")?.takeIf { it != "all" && it.isNotBlank() }
 
-    private val _cardName = MutableStateFlow("全部卡片")
+    private val _cardName = MutableStateFlow("全部收容所")
     val cardName: StateFlow<String> = _cardName.asStateFlow()
 
     /** 重命名错误提示（名称重复等）。 */
@@ -84,7 +84,7 @@ class CardRecordsViewModel @Inject constructor(
     init {
         if (cardKey != null) {
             viewModelScope.launch {
-                _cardName.value = categoryDao.getById(cardKey)?.name ?: "全部卡片"
+                _cardName.value = categoryDao.getById(cardKey)?.name ?: "全部收容所"
             }
         }
     }
@@ -175,7 +175,7 @@ class CardRecordsViewModel @Inject constructor(
             }
             val existing = categoryDao.getByName(CategoryEntity.DIM_TYPE, newName)
             if (existing != null && existing.id != cardId) {
-                _renameMessage.value = "已有同名卡片：$newName"
+                _renameMessage.value = "已有同名收容所：$newName"
                 return@launch
             }
             categoryDao.update(current.copy(name = newName))

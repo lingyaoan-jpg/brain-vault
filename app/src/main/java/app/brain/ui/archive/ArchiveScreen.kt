@@ -104,7 +104,7 @@ fun ArchiveScreen(
             IconButton(onClick = { showNewCardDialog = true }) {
                 Icon(
                     imageVector = Icons.Filled.Add,
-                    contentDescription = "新建卡片",
+                    contentDescription = "新建收容所",
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -141,7 +141,7 @@ fun ArchiveScreen(
             ) {
                 item(key = "all") {
                     CardBox(
-                        name = "全部卡片",
+                        name = "全部收容所",
                         sub = "共 $totalCount 条",
                         onClick = { onOpenCard("all") },
                     )
@@ -185,11 +185,11 @@ private fun NewCardDialog(
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("新建卡片") },
+        title = { Text("新建收容所") },
         text = {
             Column {
                 Text(
-                    text = "给一类内容起个名字，AI 之后也会把合适的记录放进这张卡片。",
+                    text = "给一类内容起个名字，AI 之后也会把合适的记录放进这个收容所。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -197,7 +197,7 @@ private fun NewCardDialog(
                     value = name,
                     onValueChange = { name = it },
                     singleLine = true,
-                    label = { Text("卡片名称") },
+                    label = { Text("收容所名称") },
                     placeholder = { Text("例如：读书笔记") },
                     modifier = Modifier
                         .fillMaxWidth()

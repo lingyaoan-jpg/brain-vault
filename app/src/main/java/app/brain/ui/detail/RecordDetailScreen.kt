@@ -228,13 +228,13 @@ fun RecordDetailScreen(
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                 ) {
                     Text(
-                        text = "所属卡片：${currentType?.name ?: "未归类"}",
+                        text = "收容所：${currentType?.name ?: "未归类"}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "换一张卡片",
+                        contentDescription = "换个收容所",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp),
                     )
@@ -593,7 +593,7 @@ fun RecordDetailScreen(
                             if (isCurrent) {
                                 Icon(
                                     imageVector = Icons.Filled.Check,
-                                    contentDescription = "现在就放在这张卡片",
+                                    contentDescription = "就在这个收容所",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp),
                                 )
@@ -617,7 +617,7 @@ fun RecordDetailScreen(
                                 newCardName = it
                                 cardError = null
                             },
-                            placeholder = { Text("新建一张卡片") },
+                            placeholder = { Text("新建一个收容所") },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodySmall,
@@ -627,9 +627,9 @@ fun RecordDetailScreen(
                             onClick = {
                                 val name = newCardName.trim()
                                 when {
-                                    name.isEmpty() -> cardError = "卡片名不能为空"
+                                    name.isEmpty() -> cardError = "收容所名不能为空"
                                     name.length > 12 -> cardError = "12 个字以内就好"
-                                    cards.any { it.name == name } -> cardError = "已经有这张卡片了"
+                                    cards.any { it.name == name } -> cardError = "已经有这个收容所了"
                                     else -> {
                                         viewModel.createCardAndMove(name)
                                         showCardPicker = false
