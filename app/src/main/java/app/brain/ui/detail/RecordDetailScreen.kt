@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -541,7 +542,8 @@ fun RecordDetailScreen(
 
 /**
  * 「分类」抽屉：只列辅助维度（内容类型在顶部标题旁已经标过了）。
- * 铅笔放在这里，随时能改；没有辅助分类时也保留铅笔，否则就没入口了。
+ * 纯列表 + 细线分隔，不做卡片；铅笔跟第一行齐平，随时能改。
+ * 没有辅助分类时也要保留铅笔，否则就没入口了。
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -550,60 +552,68 @@ private fun CategoryTabContent(
     onEdit: () -> Unit,
 ) {
     val helpers = categories.filter { it.dimension != CategoryEntity.DIM_TYPE }
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "分类",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        imageVector = Icons.Filled.Edit,
-                        contentDescription = "编辑分类",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (helpers.isEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = CATEGORY_ROW_HEIGHT),
+            ) {
+                TabEmptyText("还没有分类", modifier = Modifier.weight(1f))
+                EditCategoriesButton(onEdit)
             }
-            if (helpers.isEmpty()) {
-                TabEmptyText("还没有分类")
-            } else {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+        } else {
+            helpers.forEachIndexed { index, cat ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = CATEGORY_ROW_HEIGHT),
                 ) {
-                    helpers.forEach { cat ->
-                        TagChip(
-                            text = cat.name,
-                            dimension = cat.dimension,
-                            categoryId = cat.categoryId,
-                        )
-                    }
+                    TagChip(
+                        text = cat.name,
+                        dimension = cat.dimension,
+                        categoryId = cat.categoryId,
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (index == 0) EditCategoriesButton(onEdit)
+                }
+                if (index != helpers.lastIndex) {
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
                 }
             }
         }
     }
 }
 
+@Composable
+private fun EditCategoriesButton(onEdit: () -> Unit) {
+    IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+        Icon(
+            imageVector = Icons.Filled.Edit,
+            contentDescription = "编辑分类",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/** 分类列表每行都按这个高度走，第一行有铅笔按钮也不会比别的行高。 */
+private val CATEGORY_ROW_HEIGHT = 44.dp
+
 /** 抽屉里空着的时候只留一句灰字，不摆别的东西。 */
 @Composable
-private fun TabEmptyText(text: String) {
+private fun TabEmptyText(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.outline,
         textAlign = TextAlign.Center,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 18.dp),
     )
