@@ -60,6 +60,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -201,12 +202,14 @@ fun RecordDetailScreen(
         }
 
         val item = record!!
+        // 抽屉空着时列表没有内容可滚，底部留半屏空白，tab 才拉得上来
+        val tabScrollRoom = (LocalConfiguration.current.screenHeightDp / 2).dp
 
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = tabScrollRoom),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
