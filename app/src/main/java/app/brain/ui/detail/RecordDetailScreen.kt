@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -28,8 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -59,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -94,6 +98,7 @@ fun RecordDetailScreen(
 ) {
     val record by viewModel.record.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val currentType = categories.firstOrNull { it.dimension == CategoryEntity.DIM_TYPE }
     val comments by viewModel.comments.collectAsStateWithLifecycle()
     val commentInput by viewModel.commentInput.collectAsStateWithLifecycle()
     val deleted by viewModel.deleted.collectAsStateWithLifecycle()
@@ -103,6 +108,7 @@ fun RecordDetailScreen(
     val context = LocalContext.current
     var showExportDialog by remember { mutableStateOf(false) }
     var showCategoryDialog by remember { mutableStateOf(false) }
+    var showCardPicker by remember { mutableStateOf(false) }
     var exportFormat by remember { mutableStateOf(ExportFormat.TEXT) }
     var exportMeta by remember { mutableStateOf(true) }
     // 默认停在「后续感想」：打开一条记录，最想看的往往是后来补了什么
@@ -213,12 +219,24 @@ fun RecordDetailScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
-// 详情页最上方标注所属内容类型卡片。
-                categories.firstOrNull { it.dimension == CategoryEntity.DIM_TYPE }?.name?.let { typeName ->
+                // 最上方标注所属内容类型卡片，点一下就能把这条挪到别的卡片
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showCardPicker = true }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                ) {
                     Text(
-                        text = "所属卡片：$typeName",
+                        text = "所属卡片：${currentType?.name ?: "未归类"}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "换一张卡片",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -540,6 +558,100 @@ fun RecordDetailScreen(
             },
         )
     }
+
+    if (showCardPicker) {
+        val cardOptions by viewModel.allCategories.collectAsStateWithLifecycle()
+        var newCardName by remember { mutableStateOf("") }
+        var cardError by remember { mutableStateOf<String?>(null) }
+        val cards = cardOptions.filter { it.dimension == CategoryEntity.DIM_TYPE }
+        AlertDialog(
+            onDismissRequest = { showCardPicker = false },
+            title = { Text("选择一个收容所") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    cards.forEach { card ->
+                        val isCurrent = card.id == currentType?.categoryId
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showCardPicker = false
+                                    if (!isCurrent) viewModel.moveToCard(card.id)
+                                }
+                                .padding(vertical = 10.dp),
+                        ) {
+                            Text(
+                                text = card.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (isCurrent) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "现在就放在这张卡片",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = newCardName,
+                            onValueChange = {
+                                newCardName = it
+                                cardError = null
+                            },
+                            placeholder = { Text("新建一张卡片") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            isError = cardError != null,
+                        )
+                        TextButton(
+                            onClick = {
+                                val name = newCardName.trim()
+                                when {
+                                    name.isEmpty() -> cardError = "卡片名不能为空"
+                                    name.length > 12 -> cardError = "12 个字以内就好"
+                                    cards.any { it.name == name } -> cardError = "已经有这张卡片了"
+                                    else -> {
+                                        viewModel.createCardAndMove(name)
+                                        showCardPicker = false
+                                    }
+                                }
+                            }
+                        ) { Text("新建") }
+                    }
+                    cardError?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCardPicker = false }) { Text("取消") }
+            },
+        )
+    }
 }
 
 
@@ -629,7 +741,6 @@ private fun detailStatusColor(status: String): Color = when (status) {
 }
 
 private val EDIT_DIMENSIONS = listOf(
-    CategoryEntity.DIM_TYPE,
     CategoryEntity.DIM_TOPIC,
     CategoryEntity.DIM_URGENCY,
     CategoryEntity.DIM_IMPORTANCE,

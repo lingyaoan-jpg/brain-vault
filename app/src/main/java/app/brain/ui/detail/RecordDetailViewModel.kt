@@ -167,7 +167,9 @@ class RecordDetailViewModel @Inject constructor(
 
     fun startEditCategories() {
         val current = categories.value
+        // 内容类型是「卡片」，换卡片有单独入口，不混进标签编辑里
         _editSelection.value = current
+            .filter { it.dimension != CategoryEntity.DIM_TYPE }
             .groupBy { it.dimension }
             .mapValues { (_, list) -> list.map { it.categoryId }.toSet() }
     }
@@ -208,5 +210,44 @@ class RecordDetailViewModel @Inject constructor(
 
     fun cancelEditCategories() {
         _editSelection.value = emptyMap()
+    }
+
+    // ---------- 换卡片（内容类型） ----------
+
+    /** 把这条记录挪到另一张内容类型卡片上，同时算一次人工纠正喂给 AI。 */
+    fun moveToCard(categoryId: String) {
+        viewModelScope.launch {
+            preferenceService.applyCategoryChanges(
+                recordId,
+                CategoryEntity.DIM_TYPE,
+                listOf(categoryId),
+            )
+        }
+    }
+
+    /** 新建一张卡片并把这条记录挪过去。名字规则跟收容所那边保持一致。 */
+    fun createCardAndMove(rawName: String) {
+        val name = rawName.trim().take(12)
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            val existing = categoryDao.getByName(CategoryEntity.DIM_TYPE, name)
+            val cardId = if (existing != null) {
+                existing.id
+            } else {
+                val card = CategoryEntity(
+                    id = "user_type_${UUID.randomUUID().toString().take(8)}",
+                    dimension = CategoryEntity.DIM_TYPE,
+                    name = name,
+                    createdBy = CategoryEntity.CREATED_BY_USER,
+                )
+                categoryDao.insert(card)
+                card.id
+            }
+            preferenceService.applyCategoryChanges(
+                recordId,
+                CategoryEntity.DIM_TYPE,
+                listOf(cardId),
+            )
+        }
     }
 }
